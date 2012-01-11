@@ -49,6 +49,7 @@ def fetch_from_cache(source):
 @transaction.autocommit
 def generate_item(item):
     app, model = item['model'].split('.')
+    pk = item.get('pk')
     model = get_model(app, model)
     model_instance = model(pk='dummy_pk')
     fields = {}
@@ -108,7 +109,18 @@ def generate_item(item):
 
     dirty = False
     if fields:
-        obj, created = model.objects.get_or_create(**fields)
+        if pk:
+            try:
+                obj, created = model.objects.get(pk=pk), False
+                for k, v in fields.items():
+                    current = getattr(obj, k)
+                    if current != v:
+                        setattr(obj, k, v)
+                        dirty = True
+            except model.DoesNotExist:
+                obj, created = model.objects.get_or_create(pk=pk, **fields)
+        else:
+            obj, created = model.objects.get_or_create(**fields)
 
         if created and direct_foreign_key_fields:
             for k, v in direct_foreign_key_fields.items():
@@ -154,8 +166,8 @@ def generate_item(item):
             obj.set_password(password_field)
             dirty = True
 
-        if dirty:
-            obj.save()
+    if dirty:
+        obj.save()
 
     return obj
 
