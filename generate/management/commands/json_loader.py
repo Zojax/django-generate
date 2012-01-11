@@ -64,7 +64,6 @@ def generate_item(item):
             # No need to recurse or process further if foreign key is provided
             if field.endswith('_id'):
                 direct_foreign_key_fields[field] = value
-                continue
 
             if value.__class__ == list:
                 value_items = []
@@ -77,7 +76,9 @@ def generate_item(item):
             elif value.__class__ == dict:
                 value = generate_item(value)
 
-            model_field = model_instance._meta.get_field(field)
+            model_field = None
+            if field not in direct_foreign_key_fields:
+                model_field = model_instance._meta.get_field(field)
             if isinstance(model_field, ManyToManyField):
                 many_to_many_fields[str(field)] = value
             elif isinstance(model_field, ImageField):
