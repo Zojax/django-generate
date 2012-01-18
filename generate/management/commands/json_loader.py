@@ -139,32 +139,30 @@ def generate_item(item):
             obj.save()
             created = True
 
-    if created:
-        #print "Created %s" % obj
+    for field, value in many_to_many_fields.items():
+        obj_field = getattr(obj, field)
+        obj_field.clear()
+        if value.__class__ == list:
+            for val in value:
+                obj_field.add(val)
+        else:
+            obj_field.add(value)
+        dirty = True
 
-        for field, value in many_to_many_fields.items():
-            obj_field = getattr(obj, field)
-            if value.__class__ == list:
-                for val in value:
-                    obj_field.add(val)
-            else:
-                obj_field.add(value)
-            dirty = True
+    for field, value in image_fields.items():
+        field_attr = getattr(obj, field)
+        f = load_file(field, value)
+        field_attr.save(f.name, f)
 
-        for field, value in image_fields.items():
-            field_attr = getattr(obj, field)
-            f = load_file(field, value)
-            field_attr.save(f.name, f)
+    for field, value in file_fields.items():
+        field_attr = getattr(obj, field)
+        f = load_file(field, value)
+        field_attr.save(f.name, f)
+        dirty = True
 
-        for field, value in file_fields.items():
-            field_attr = getattr(obj, field)
-            f = load_file(field, value)
-            field_attr.save(f.name, f)
-            dirty = True
-
-        if password_field:
-            obj.set_password(password_field)
-            dirty = True
+    if password_field:
+        obj.set_password(password_field)
+        dirty = True
 
     if dirty:
         obj.save()
@@ -181,7 +179,7 @@ def load_json(source, data_formatter=None):
         json_data = json.loads(data)
         source.close()
     elif source.__class__ == list:
-        source = [str(item).replace("False", "false").replace("True", "true").\
+        source = [str(item).replace("False", "false").replace("True", "true").replace("None", "null").\
                 replace("'", '"') for item in source]
         json_data = json.loads("[%s]" % ','.join(source))
 
